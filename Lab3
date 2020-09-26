@@ -1,0 +1,99 @@
+/*------------------------------------------------------------------------------
+ * File:        HW3.c (Lab 3 Assignment)
+ * Function:    Manipulating LED1&2 and Switch1&2 (EXP-MSP430F5529)
+ * Description: This C program turns on LED1 connected to P1.0 and toggles LED2 connected to P4.7 when S2 is pressed .
+ *              Turns off LED2 and toggles LED1 when S1 is pressed.
+ *              Toggles LED1 and LED2 when S1 and S2 are pressed concurrently
+ *              S2 is connected to P1.1 and S1 is connected to P2.1
+ * Clocks:      ACLK = 32.768kHz, MCLK = SMCLK = default DCO (~1 MHz)
+ *
+ *
+ * Input:       S1 and S2 at 0 or 1
+ * Output:      LED1 and LED2 is turned on
+ * Author:      Imaobong Nkitma
+ *------------------------------------------------------------------------------*/
+#include <msp430.h>
+#define S1 P2IN&BIT1
+#define S2 P1IN&BIT1
+
+int main(void)
+{
+	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
+	
+	P1DIR |= BIT0;              // Set P1.0 to output direction
+    P4DIR |= BIT7;              // Set P4.7 to output direction
+
+    P1OUT &= ~BIT0;             // LED1 is OFF
+    P4OUT |= BIT7;              // LED2 is ON
+
+
+    P2DIR &= ~BIT1;                       // Set P2.1 as input for S1 input
+    P1DIR &= ~BIT1;                       // Set P1.1 as input for S2 input
+
+    P2OUT |= BIT1;                        // Required for proper IO
+    P1OUT |= BIT1;                        // Required for proper IO
+
+    P2REN |= BIT1;                        // Enable the Pull-up resistor at P2.1
+    P1REN |= BIT1;                        // Enable the Pull-up resistor at P1.1
+
+    unsigned int i=0, j=0, k=0;           //initialize loop counters
+    for (;;)
+    {                            // Infinite loop
+            if ((S1) == 0)
+            {                  // If S1 is pressed
+                for (i = 2000; i > 0; i--);   // Debounce ~20 ms
+                if ((S1) == 0)
+                {
+                    P4OUT &= ~BIT7;            // S1 pressed, turn LED2 off
+                    while((S1) == 0)
+                    {
+                           for (j = 0; j < 25000; j++); // Delay 0.25s
+                                                        // 0.25s on, 0.25s off => 1/(0.5s) = 2Hz
+                           P1OUT ^= BIT0;               // Toggle LED1
+
+//                     ******************BONUS**************
+                           while((S2) == 0 )            //S2 is pressed, while S1 is pressed, Toggle LED1&2
+                           {
+                               for (k = 0; k < 6250; k++); // Delay 0.0625s
+                                                          // 0.0625s on, 0.0625s off => 1/(0.125s) = 8Hz
+                               P1OUT ^= BIT0;               // Toggle LED1
+                               P4OUT ^= BIT7;               // Toggle LED2
+                           }
+                    }
+                }
+                while ((S1) == 0);            // Hang-on as long as S1 pressed
+            }
+
+            else if ((S2) == 0)
+            {                  // If S2 is pressed
+                for (i = 2000; i > 0; i--);   // Debounce ~20 ms
+                if ((S2) == 0)
+                {
+                    P1OUT |= BIT0;            // S2 pressed, turn LED1 on
+                    while((S2) == 0)
+                    {
+                        for (j = 0; j < 10000; j++); // Delay 0.1s
+                                                     // 0.1s on, 0.1s off => 1/(0.2s) = 5Hz
+                        P4OUT ^= BIT7;               // Toggle LED2
+
+//                     *********************BONUS**************
+                        while((S1) == 0 )            //S1 is pressed, while S2 is pressed, Toggle LED1&2
+                        {
+                            for (k = 0; k < 6250; k++); // Delay 0.0625s
+                                                                                  // 0.0625s on, 0.0625s off => 1/(0.125s) = 8Hz
+                            P1OUT ^= BIT0;               // Toggle LED1
+                            P4OUT ^= BIT7;               // Toggle LED2
+                        }
+                    }
+                }
+                     while ((S2) == 0);            // Hang-on as long as S2 pressed
+            }
+
+            else
+            {
+                P1OUT &= ~BIT0;
+                P4OUT |= BIT7;
+            }
+    }
+
+}
