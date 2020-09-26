@@ -1,0 +1,49 @@
+#include <msp430.h>
+#include <stdio.h>
+
+int main()
+{
+    WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
+
+    int mat1[8][8] = { {1, 1, 1, 1, 1, 1, 1, 1},            //defining and initializing 8 by 8 matrices
+                    {2, 2, 2, 2, 2, 2, 2, 2},
+                    {3, 3, 3, 3, 3, 3, 3, 3},
+                    {4, 4, 4, 4, 4, 4, 4, 4},
+                    {5, 5, 5, 5, 5, 5, 5, 5},
+                    {6, 6, 6, 6, 6, 6, 6, 6},
+                    {7, 7, 7, 7, 7, 7, 7, 7},
+                    {8, 8, 8, 8, 8, 8, 8, 8} };
+
+    int mat2[8][8] = { {1, 1, 1, 1, 1, 1, 1, 1},
+                    {2, 2, 2, 2, 2, 2, 2, 2},
+                    {3, 3, 3, 3, 3, 3, 3, 3},
+                    {4, 4, 4, 4, 4, 4, 4, 4},
+                    {5, 5, 5, 5, 5, 5, 5, 5},
+                    {6, 6, 6, 6, 6, 6, 6, 6},
+                    {7, 7, 7, 7, 7, 7, 7, 7},
+                    {8, 8, 8, 8, 8, 8, 8, 8} };
+
+    int res[8][8];          // matrix to store result of mat1 and mat2 matrix multiplication
+    int i, j, k;            //defines loop counters
+
+    for (i = 0; i < 8; i++)             //for loop to implement multiplication of matrices
+    {
+        for (j = 0; j < 8; j++)
+        {
+            res[i][j] = 0;                 //initialize adder to store results
+            for (k = 0; k < 8; k++)
+                res[i][j] += mat1[i][k]*mat2[k][j];
+        }
+    }
+
+
+    printf("Result matrix is \n");      //for loop to print results from arrays
+    for (i = 0; i < 8; i++)
+    {
+        for (j = 0; j < 8; j++)
+           printf("%d ", res[i][j]);
+        printf("\n");
+    }
+
+    return 0;
+}
