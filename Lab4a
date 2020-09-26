@@ -1,0 +1,81 @@
+;-------------------------------------------------------------------------------
+; File       : Q1.asm
+; Function   : Counts the number of words and sentences in a string
+; Description: Program traverses an input array of characters to detect the number of words (words are separated by NULL character)
+;			   and number of sentences (sentences are separated by '.', '!' or '?')
+;			   exits when a NULL is detected
+; Input      : The input string is specified in myStr
+; Output     : output intergers sent_count nand word_count displays number of sentences and words respectively
+; Author     : Imaobong Nkitma
+; Date       : 9/21/2020
+;-------------------------------------------------------------------------------
+        .cdecls C,LIST,"msp430.h"       ; Include device header file
+
+;-------------------------------------------------------------------------------
+        .def    RESET                   ; Export program entry-point to
+                                        ; make it known to linker.
+
+        		.data					;updates variable in RAM memory
+sent_count:		.int 		0;			;counter for number of sentences in string
+word_count:		.int		0;			;counter for number of words in string
+
+myStr:		.cstring "Hello! There. I am?"
+			;.cstring adds NULL character at end of string.
+
+;-------------------------------------------------------------------------------
+        .text                           ; Assemble into program memory.
+        .retain                         ; Override ELF conditional linking
+                                        ; and retain current section.
+        .retainrefs                     ; And retain any sections that have
+                                        ; references to current section.
+;-------------------------------------------------------------------------------
+RESET:  mov.w   #__STACK_END,SP         ; Initialize stack pointer
+        mov.w   #WDTPW|WDTHOLD,&WDTCTL  ; Stop watchdog timer
+
+;-------------------------------------------------------------------------------
+; Main loop here
+;-------------------------------------------------------------------------------
+main:   mov.w   #myStr, R4              ; load the starting address of the string into R4
+        clr.b   R5                      ; registers R5 and R6 will serve as counters
+        clr.b	R6
+gnext1: mov.b   @R4+, R7                ; get a new character
+        cmp		#0,R7                   ; is it a null character
+        jeq     w_end                   ; if yes, go to the end
+		cmp.b   #' ',R7                 ; is it a space character
+		jne     gnext2                  ; if no, go to the next character
+		inc.w   R5                      ; if yes, increment counter
+
+gnext2: cmp.b   #'.',R7                 ; is it a '.' character
+        jne     gnext3                  ; if not, go to the next
+        inc.w   R6                      ; if yes, increment counter
+
+gnext3: cmp.b   #'!',R7                 ; is it a '!' character
+        jne     gnext4                  ; if not, go to the next
+        inc.w   R6                      ; if yes, increment counter
+
+gnext4: cmp.b   #'?',R7                 ; is it a '?' character
+        jne     gnext1                  ; if not, go to the next
+        inc.w   R6                      ; if yes, increment counter
+
+
+w_end:  inc.w	R5						; increament in counter for last word before null character at end of string
+		mov.b   R5,word_count           ; write result in word_count
+		mov.b	R6,sent_count			; write result in sent_count
+        bis.w   #LPM4,SR                ; LPM4
+        nop                             ; required only for Debugger
+
+
+;-------------------------------------------------------------------------------
+; Stack Pointer definition
+;-------------------------------------------------------------------------------
+        .global __STACK_END
+        .sect   .stack
+
+;-------------------------------------------------------------------------------
+; Interrupt Vectors
+;-------------------------------------------------------------------------------
+         .sect   ".reset"               ; MSP430 RESET Vector
+         .short  RESET
+         .end
+
+
