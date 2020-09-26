@@ -1,0 +1,37 @@
+#include <msp430.h> 
+#include <limits.h>             //for library functions to find datatype ranges
+#include <stdio.h>
+#include <float.h>              //for library functions to float datatype ranges
+
+/**
+ * main.c
+ */
+int main(void)
+{
+	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
+
+
+	//prints results from hw problem utilizing library functions from <limits.h> and <float.h> header files
+	//to find Datatype ranges and sizes
+
+	printf("%.*s\n", 200, "**************************************************************************");
+	printf("| Data Type          | Size (in byte)    | Minimum       | Maximum       |\n");
+	printf("%.*s\n", 200, "**************************************************************************");
+
+	printf("|char                |%10d\t |%10d\t |%10d\t |\n", sizeof(char), CHAR_MIN, CHAR_MAX);
+	printf("|short int           |%10d\t |%10d\t |%10d\t |\n", sizeof(short int), SHRT_MIN, SHRT_MAX);
+	printf("|int                 |%10d\t |%10d\t |%10d\t |\n", sizeof(int), INT_MIN, INT_MAX);
+	printf("|long int            |%10d\t |%10d\t |%10d\t |\n", sizeof(long int), LONG_MIN,  LONG_MAX);
+	printf("|long long int       |%10d\t |%10d\t |%10d\t |\n", sizeof(long long int), LLONG_MIN, LLONG_MAX);
+	printf("|unsigned char       |%10d\t |%10d\t |%10d\t |\n", sizeof(unsigned char), (unsigned) CHAR_MIN, (unsigned) CHAR_MAX);
+	printf("|unsigned short int  |%10d\t |%10d\t |%10d\t |\n", sizeof(unsigned short int) , (unsigned) SHRT_MIN, (unsigned) SHRT_MAX);
+	printf("|unsined int         |%10d\t |%10d\t |%10d\t |\n", sizeof(unsigned int) , (unsigned) INT_MIN, (unsigned) INT_MAX);
+	printf("|unsigned long int   |%10d\t |%10d\t |%10d\t |\n", sizeof(unsigned long int) , (unsigned) LONG_MIN, (unsigned) LONG_MAX);
+    printf("|unsig long long int |%10d\t |%10d\t |%10d\t |\n", sizeof(unsigned long long int) , (unsigned) LLONG_MIN, (unsigned) LLONG_MAX);
+    printf("|float               |%10d\t |%10d\t |%10d\t |\n", sizeof(float) , FLT_MIN, FLT_MAX);
+    printf("|double              |%10d\t |%10d\t |%10d\t |\n", sizeof(double) , DBL_MIN, DBL_MAX);
+
+    printf("%.*s\n", 200, "**************************************************************************");
+
+	return 0;
+}
