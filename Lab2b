@@ -1,0 +1,46 @@
+#include <msp430.h>
+#include <stdio.h>
+
+/*
+ * Q2.c
+ *
+ *  Created on: Sep 5, 2020
+ *      Author: inkit
+ */
+int main(void)
+{
+    WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
+
+    int X [] = {1,2,3,4,5};             //define and initialize arrays X and Y
+    int Y [] = {6,7,8,9,10};
+
+    int i,j, dot = 0;                   // define and initialize loop counters and adders
+    int size_X = sizeof(X)/sizeof(X[0]);
+
+    for(i = 0; i < size_X; i++)         //for loop to carry out dot product operation on arrays X and Y
+        {                               //in dot product of two vectors, we multiply by common coefficients and sum the products.
+            dot = dot + (X[i]*Y[i]);
+        }
+
+    printf("Input Array X:  [");        //prints output/result as stated in homework
+    for(j = 0; j < size_X; j++)         //use for loop to print out numbers in the array for display on console
+    {
+        printf("%d ", X[j]);
+    }
+    printf("]\n");
+
+    j = 0;
+
+    printf("Input Array Y:  [");
+    for(j = 0; j < size_X; j++)
+    {
+        printf("%d ", Y[j]);
+    }
+    printf("]\n");
+
+
+    printf("Dot Product:    %d\n ", dot);
+    return 0;
+}
+
+
