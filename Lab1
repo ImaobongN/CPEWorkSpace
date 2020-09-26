@@ -1,0 +1,42 @@
+#include <msp430.h>
+#include <stdio.h>
+#include <string.h>
+/**
+ *Name:         Imaobong Nkitma
+* Program:      count number of uppercase, lowercase and numbers in string
+* Date:         Aug 24, 2020
+* Input:        None
+* Output:       number of uppercase, lowercase and numbers in string
+* Description:  This C program counbts the number of uppercase and lowercase letter as well as the number of digits in a string
+*               and outputs the values each.
+ */
+
+int main()
+{
+  WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
+
+  char str[] = "a1A2eE";
+
+  int i, upper, lower, digit;
+  upper = 0; lower = 0; digit = 0;
+
+  for(i = 0; i<strlen(str); i++)
+  {
+      if(str[i] >= 'A' && str[i] <= 'Z')
+          upper++;
+
+      else if(str[i] >= 'a' && str[i] <= 'z')
+          lower++;
+
+      else if(str[i] >= '0' && str[i] <= '9')
+          digit++;
+  }
+
+  printf("%s\n", str);
+  printf("Contains: The string contains %d", upper);
+  printf(" upper-case characters, %d", lower);
+  printf(" lower-case characters and %d\n digits.", digit);
+
+  return 0;
+}
+
