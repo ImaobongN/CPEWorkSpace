@@ -1,0 +1,66 @@
+; ;-------------------------------------------------------------------------------
+; File       : Q1_main.asm
+; Function   : Finds a sum of two integer arrays using a subroutine.
+; Description: The program calls suma_rp to sum up elements of integer arrays and
+;              then displays the sum on parallel ports.
+;              Parameters to suma_rp are passed through registers, R12, R13.
+;              The subroutine suma_rp return the result in register R14.
+; Input      : The input arrays are signed 16-bit integers in arr1 and arr2
+; Output     : Result is stored in adress of arr1 and arr2
+; Author     : A. Milenkovic, milenkovic@computer.org
+; Date       : September 14, 2008 (revised August 2020)
+;-------------------------------------------------------------------------------
+;
+;-------------------------------------------------------------------------------
+            .cdecls C,LIST,"msp430.h"       ; Include device header file
+            
+;-------------------------------------------------------------------------------
+            .def    RESET                   ; Export program entry-point to
+            								; make it known to linker.
+            .ref	cal_power
+
+;-----------------------------------------------------------------------------
+;			USER DATA
+;-----------------------------------------------------------------------------
+			.data							; so that it goes to data section
+val1:		.int	2						; val1 is an integer whose value is 2
+val2:		.int	1						; val2 is multiplier
+											; .. let us init it with 0 for now
+;-------------------------------------------------------------------------------
+            .text                           ; Assemble into program memory.
+            .retain                         ; Override ELF conditional linking
+                                            ; and retain current section.
+            .retainrefs                     ; And retain any sections that have
+                                            ; references to current section.
+
+;-------------------------------------------------------------------------------
+RESET       mov.w   #__STACK_END,SP         ; Initialize stackpointer
+StopWDT     mov.w   #WDTPW|WDTHOLD,&WDTCTL  ; Stop watchdog timer
+
+
+;-------------------------------------------------------------------------------
+; Main loop here
+;-------------------------------------------------------------------------------
+main:
+			sub.w	#20, SP				; reserve space for arr1 & arr2 (hardware & software)
+			PUSH	val1				; save val1
+			PUSH	val2				; save val2
+			PUSH	#5					; save size of array
+			PUSH	#5					; save number of bit for software multiplication
+			call 	#cal_power			; call subroutine
+
+			jmp     $
+
+
+;-------------------------------------------------------------------------------
+; Stack Pointer definition
+;-------------------------------------------------------------------------------
+            .global __STACK_END
+            .sect   .stack
+            
+;-------------------------------------------------------------------------------
+; Interrupt Vectors
+;-------------------------------------------------------------------------------
+            .sect   ".reset"                ; MSP430 RESET Vector
+            .short  RESET
+            
