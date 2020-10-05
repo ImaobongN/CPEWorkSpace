@@ -1,14 +1,6 @@
 ; ;-------------------------------------------------------------------------------
 ; File       : Q1_main.asm
-; Function   : Finds a sum of two integer arrays using a subroutine.
-; Description: The program calls suma_rp to sum up elements of integer arrays and
-;              then displays the sum on parallel ports.
-;              Parameters to suma_rp are passed through registers, R12, R13.
-;              The subroutine suma_rp return the result in register R14.
-; Input      : The input arrays are signed 16-bit integers in arr1 and arr2
-; Output     : Result is stored in adress of arr1 and arr2
-; Author     : A. Milenkovic, milenkovic@computer.org
-; Date       : September 14, 2008 (revised August 2020)
+; 
 ;-------------------------------------------------------------------------------
 ;
 ;-------------------------------------------------------------------------------
