@@ -1,0 +1,59 @@
+;-------------------------------------------------------------------------------
+; File       : Q1_SR.asm
+; Function   : Finds the 1-5th power of an interger passed from main
+; Description: cal_power is a subroutine that calculates the 1-5th power of an interger passed from main
+;			   it performs software and hardwaremultiplication and populates results from operation in
+;			   respective reserved arrays
+; Author     : Imaobong Nkitma
+; Date       : October 3, 2020
+;------------------------------------------------------------------------------
+            .cdecls C,LIST,"msp430.h"      ; Include device header file
+
+            .def cal_power
+
+            .text
+
+cal_power:
+
+            push    R11                     ; save R11, arr1 length
+            push	R8						; save R8, pointer to val1
+            push	R9						; save R9, pointer to val2
+            push	R7						; counter for software multiplication
+            push	R4						; save R4, arr2 length
+
+			clr		R7
+			mov.w	18(SP), R8				; retrieve val1
+			mov.w	16(SP), R9				; retrieve val2
+			mov.w   14(SP), R11             ; retrieve arr1 length
+			mov.w	12(SP), R4				; retrieve arr2 length
+
+HW_Mult:    mov 	R8,&MPY					; moves val1 to R5
+			mov		R9,&OP2					; moves val2 to R6
+			nop
+			mov  	RESLO,20(SP)			; moves result to array
+			mov		20(SP), R9				; val2 = result
+			pop		20(SP)					; increment SP at array address
+			dec.w   R11                     ; decrement array length
+            jnz     HW_Mult                 ; repeat if not done
+			jmp		SW_Mult					; else jump to lend
+
+
+SW_Mult:	add		R8, R7					; copy R8 in temporary storage
+			rla 	R8						; arithmetic shift left
+			mov  	R7, 20(SP)				; moves result to array
+			pop		20(SP)					; increment SP at array address
+			clr		R7						; clear temp storage
+			dec.w   R4                      ; decrement array size
+			jnz		SW_Mult					;jump to SW_Mult if not zero
+			jmp		lend					; else go to lend
+
+
+
+lend:  		pop		R4						; restore R4
+			pop		R7						; restore R7
+			pop     R9                      ; restore R9
+			pop		R8						; restore R8
+            pop		R11						; restore R11
+			ret                     		; return from subroutine
+
+            .end
