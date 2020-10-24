@@ -1,0 +1,231 @@
+#include  <msp430.h>
+
+#define S1 P2IN&BIT1
+#define S2 P1IN&BIT1       // S1 &S2
+char freqIs = 1;    // initial condition in 1 Mhz
+
+void configure_clock_sources();
+void SW1_key_press();
+void SW2_key_press();
+void change_clock_freq_1Mhz();
+void change_clock_freq_2Mhz();
+void change_clock_freq_4Mhz();
+void change_clock_freq_8Mhz();
+
+void main(void) {
+       WDTCTL = WDTPW+WDTHOLD;              // Stop WDT
+       WDTCTL = WDTPW + WDTHOLD;            // Stop watchdog timer
+
+       P3DIR |= BIT0;                       // ACLK set out to pins
+       P3SEL |= BIT0;
+
+       P2DIR |= BIT2;                       // SMCLK set out to pins
+       P2SEL |= BIT2;
+
+       P7DIR |= BIT7;                       // MCLK set out to pins
+       P7SEL |= BIT7;
+
+       _EINT();                             // enable interrupts
+       P2DIR &= ~BIT1;                      // set P2.1 as input (SW1)
+       P1DIR &= ~BIT1;                      // Set P1.1 as input (SW2)
+
+       P2OUT |= BIT1;                       // Required for proper IO
+       P1OUT |= BIT1;                       // Required for proper IO
+
+       P2REN |= BIT1;                       // enable pull-up resistor
+       P2IE |= BIT1;                        // enable interrupt at P2.1
+       P2IES |= BIT1;                       // enable hi->lo edge for interrupt
+       P2IFG &= ~BIT1;                      // clear any errornous interrupt flag
+
+       P1REN |= BIT1;                       // enable pull-up resistor
+       P1IE |= BIT1;                        // enable interrupt at P1.1
+       P1IES |= BIT1;                       // enable hi->lo edge for interrupt
+       P1IFG &= ~BIT1;                      // clear any errornous interrupt flag
+
+       P4DIR |= BIT7;                       // set P4.7 as output (LED2)
+       P1DIR &= ~BIT0;                       // set P1.0 as output (LED1)
+
+       configure_clock_sources();           // configure the clock sources
+
+       for(;;)                             // Loop in place (infinite)
+          {
+              P4OUT ^= BIT7;                   // toggle LED2
+              P1OUT ^= BIT0;                   // toggle LED1
+              __delay_cycles(500000);          // arbitrary delay of 500ms
+
+          }
+
+}
+
+void SW1_key_press()                 // handles the SW1 key press
+{
+    P1DIR |= BIT0;
+
+    // if SW1 is pressed, you want to increase the freq
+
+    if(freqIs==1)
+    {
+       // if not at 2Mhz, let us change to 2Mhz
+       change_clock_freq_2Mhz();
+       freqIs = 2;
+    }
+    else if(freqIs==2)
+    {
+       // if not at 4Mhz, let us change to 4Mhz
+       change_clock_freq_4Mhz();
+       freqIs = 4;
+    }
+    else if(freqIs==4)
+    {
+       // if not at 8Mhz, let us change to 8Mhz
+       change_clock_freq_8Mhz();
+       freqIs = 8;
+    }
+    else
+    {
+       // if already in 8Mhz, let us take back to 1Mhz
+       change_clock_freq_1Mhz();
+       freqIs = 1;
+    }
+}
+
+// ISR handles PORT2 debouncing
+#pragma vector = PORT2_VECTOR
+__interrupt void Port2_ISR(void)
+{
+    P2IFG &= ~BIT1;
+
+        //debouncing section
+        __delay_cycles(25000);
+        // you have to check again if SW1 is pressed
+        // .. if still pressed,  then go to SW1_key_press()
+        if((P2IN&BIT1)!=0x00)
+                return;
+        SW1_key_press();
+}
+
+void SW2_key_press()                 // handles the SW2 key press
+{
+    if(freqIs==1)
+        {
+           // if not at 2Mhz, let us change to 2Mhz
+           change_clock_freq_8Mhz();
+           freqIs = 8;
+        }
+        else if(freqIs==8)
+        {
+           // if not at 4Mhz, let us change to 4Mhz
+           change_clock_freq_4Mhz();
+           freqIs = 4;
+        }
+        else if(freqIs==4)
+        {
+           // if not at 8Mhz, let us change to 8Mhz
+           change_clock_freq_2Mhz();
+           freqIs = 2;
+        }
+        else
+        {
+           // if already in 8Mhz, let us take back to 1Mhz
+           change_clock_freq_1Mhz();
+           freqIs = 1;
+        }
+}
+
+
+// ISR handles PORT1 debouncing
+#pragma vector = PORT1_VECTOR
+__interrupt void Port1_ISR(void)
+{
+    P1IFG &= ~BIT1;
+
+        //debouncing section
+        __delay_cycles(25000);
+        if((P1IN&BIT1)!=0x00)
+                return;
+        SW2_key_press();
+}
+
+void change_clock_freq_1Mhz()
+{
+    __bis_SR_register(SCG0);                  // Disable the FLL control loop
+    UCSCTL1 = DCORSEL_3;                      // Select DCO range 1MHz operation
+    UCSCTL2 = 32;                             // Set DCO Multiplier for 1MHz
+                                              // (N + 1) * FLLRef = Fdco
+                                              // (32 + 1) * 32768 = 1MHz
+    __bic_SR_register(SCG0);                  // Enable the FLL control loop
+
+    // Worst-case settling time for the DCO when the DCO range bits have been
+    // changed is n x 32 x 32 x f_MCLK / f_FLL_reference. See UCS chapter in 5xx
+    // UG for optimization.
+    // 32 x 32 x 1 MHz / 32,768 Hz = 33792 = MCLK cycles for DCO to settle
+    __delay_cycles(33792);
+}
+
+void change_clock_freq_2Mhz()
+{
+    __bis_SR_register(SCG0);                  // Disable the FLL control loop
+    UCSCTL1 = DCORSEL_4;                      // Select DCO range 2MHz operation
+    UCSCTL2 = 62;                             // Set DCO Multiplier for 8MHz
+                                              // (N + 1) * FLLRef = Fdco
+                                              // (62 + 1) * 32768 = 2MHz
+    __bic_SR_register(SCG0);                  // Enable the FLL control loop
+
+    // Worst-case settling time for the DCO when the DCO range bits have been
+    // changed is n x 32 x 32 x f_MCLK / f_FLL_reference. See UCS chapter in 5xx
+    // UG for optimization.
+    // 32 x 32 x 2 MHz / 32,768 Hz = 62500 = MCLK cycles for DCO to settle
+    __delay_cycles(64512);
+}
+
+void change_clock_freq_4Mhz()
+{
+    __bis_SR_register(SCG0);                  // Disable the FLL control loop
+    UCSCTL1 = DCORSEL_5;                      // Select DCO range 2MHz operation
+    UCSCTL2 = 122;                             // Set DCO Multiplier for 8MHz
+                                              // (N + 1) * FLLRef = Fdco
+                                              // (122 + 1) * 32768 = 4MHz
+    __bic_SR_register(SCG0);                  // Enable the FLL control loop
+
+    // Worst-case settling time for the DCO when the DCO range bits have been
+    // changed is n x 32 x 32 x f_MCLK / f_FLL_reference. See UCS chapter in 5xx
+    // UG for optimization.
+    // 32 x 32 x 2 MHz / 32,768 Hz = 62500 = MCLK cycles for DCO to settle
+    __delay_cycles(125952);
+}
+
+void change_clock_freq_8Mhz()
+{
+    __bis_SR_register(SCG0);                  // Disable the FLL control loop
+    UCSCTL1 = DCORSEL_6;                      // Select DCO range 8MHz operation
+    UCSCTL2 = 244;                            // Set DCO Multiplier for 8MHz
+                                              // (N + 1) * FLLRef = Fdco
+                                              // (244 + 1) * 32768 = 8MHz
+    __bic_SR_register(SCG0);                  // Enable the FLL control loop
+
+    // Worst-case settling time for the DCO when the DCO range bits have been
+    // changed is n x 32 x 32 x f_MCLK / f_FLL_reference. See UCS chapter in 5xx
+    // UG for optimization.
+    // 32 x 32 x 8 MHz / 32,768 Hz = 250000 = MCLK cycles for DCO to settle
+    __delay_cycles(250880);
+}
+
+
+// this function configures the clock sources as follows
+// .. use internal REFOCLK for FLL reference clock (UCSCTL3 = SELREF_2)
+// .. ACLK is sourced with REFOCLK (UCSCTL4 |= SELA_2)
+// .. sets DCO tap to 0 (UCSCTL0 = 0)
+// .. sets the modulation bit counter value to 0 (UCSCTL0 = 0)
+void configure_clock_sources()
+{
+    UCSCTL3 = SELREF_2;                  // Set DCO FLL reference = REFO
+    UCSCTL4 |= SELA_2;                   // Set ACLK = REFO
+    UCSCTL0 = 0x0000;                    // Set lowest possible DCOx, MODx
+
+    // Loop until XT1,XT2 & DCO stabilizes - In this case only DCO has to stabilize
+    do
+    {
+    UCSCTL7 &= ~(XT2OFFG + XT1LFOFFG + DCOFFG);   // Clear XT2,XT1,DCO fault flags
+    SFRIFG1 &= ~OFIFG;                            // Clear fault flags
+    } while (SFRIFG1&OFIFG);                      // Test oscillator fault flag
+}
