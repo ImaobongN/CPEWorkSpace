@@ -1,0 +1,319 @@
+/*--------------------------------------------------------------------------------
+ * File:          HW8.c
+ * Function:      Prompts user for information and echoes received characters using polling
+ * Description:   ==> This program echos the character received from UART back to UART.
+ *                ==> Prompts user for username and password on hyperterminal
+ *                ==> Masks password with "*"
+ *                ==> Checks if password/username is valid or not
+ *                ==> Prompts user to change password or add new user
+ *                Baud rate: low-frequency (UCOS16=0);
+ *                1048576/115200 = ~9.1 (0x0009|0x01)
+ *
+ * Clocks:        ACLK = LFXT1 = 32768Hz, MCLK = SMCLK = default DCO
+ * Port: COM5
+ * Baud rate: 115200
+ * Data bits: 8
+ * Parity: None
+ * Stop bits: 1
+ * Flow Control: None
+ * Note:       If you are using Adafruit USBtoTTL cable, look for COM port
+ *             in the Windows Device Manager with the following text:
+ *             Silicon Labs CP210x USB to UART Bridge (COM<x>).
+ *             Connecting Adafruit USB to TTL:
+ *              GND - black wire - connect to the GND pin (on the board or BoosterPack)
+ *              Vcc - red wire - leave disconnected
+ *              Rx    white wire (receive into USB, connect on TxD of the board P3.3)
+ *              Tx -  green wire (transmit from USB, connect to RxD of the board P3.4)
+ *--------------------------------------------------------------------------------*/
+
+#include <msp430.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+
+//values for outputs and input
+char user_name_prompt[]="\x1B[32mPlease enter the user name: ";
+const char user_name[]=  "username1";
+char user_input_user_name[100];
+char psswd_prompt[]="\x1B[35mEnter the password: ";
+const char psswd[]= "password1";
+char user_input_psswd[100];
+char valid_input[]= "\x1B[32mWelcome to CPE 325!!!";
+char invalid_input[]= "\x1B[31mIncorrect username or password!!!";
+
+char change_psswd[]= "\x1B[37mChange password? (Y/N)";
+char new_psswd[]= "\x1B[37mEnter new password: ";
+char yes_no[10];
+char ans_Y[] = "Y", ans_N[]="N";
+
+char new_user[]= "\x1B[37mNew User? (Y/N)";
+char new_username[]= "\x1B[37mEnter new username: ";
+
+char test_psswd1[] = "password2", test_username1[] = "username2";           //will use these for bonus question to change psswd
+char test_psswd2[100], test_username2[100];                                 //will use these for bonus question to create new user
+
+
+unsigned int i=0;   //loop counter
+
+//function adds new line and carriage return
+void end_of_line(void)
+{
+    while(!(UCA0IFG&UCTXIFG));  //waits for character
+    UCA0TXBUF='\n';             //transmits new line character to Hyperterminal
+    while(!(UCA0IFG&UCTXIFG));  //waits for character
+    UCA0TXBUF='\r';             //transmits carriage return character to Hyperterminal
+}
+
+//function prompts for username and password and echoes on user input on Hyperterminal
+void prompt_user(void)
+{
+    //initial username prompt
+    end_of_line();
+    for(i=0; i<strlen(user_name_prompt);i++)        //loops through username prompt
+    {
+        while(!(UCA0IFG& UCTXIFG));                  //waits for character
+        UCA0TXBUF=user_name_prompt[i];              //sets character to for element of username prompt
+    }
+
+    end_of_line();                                  //calls new line and carriage return function
+
+    for(i=0; i<100;i++)                             //loops through received username on hyperterminal
+    {
+        while(!(UCA0IFG&UCRXIFG));                  //waits for character
+        if(UCA0RXBUF== 0x0D)                        //if character is the "carriage return", will break from receiving characters
+            break;
+        while(!(UCA0IFG&UCTXIFG));                  //waits for character
+        UCA0TXBUF=UCA0RXBUF;                        //TXBUF <= RXBUF (echo)
+        user_input_user_name[i]=UCA0RXBUF;          //sets characters from received username to characters received from transmit buffer
+    }
+    UCA0RXBUF = 0;                                  //clears transmit buffer
+
+    //initial password prompt
+    end_of_line();                                  //calls new line and carriage return function
+    for(i=0; i<strlen(psswd_prompt);i++)            //loops through password prompt
+    {
+        while(!(UCA0IFG&UCTXIFG));                  //waits for character
+        UCA0TXBUF=psswd_prompt[i];                  //sets character to for element of password prompt
+    }
+    end_of_line();                                  //calls new line and carriage return function
+
+    for(i=0; i<100;i++)                             //loops through received password on hyperterminal
+    {
+        while(!(UCA0IFG&UCRXIFG));                  //waits for character
+        if(UCA0RXBUF== 0x0D)                        // if character is the "carriage return" will break from receiving characters
+        break;
+        while(!(UCA0IFG&UCTXIFG));                  //waits for character
+        UCA0TXBUF='*';                              //Masks password with "*" (bonus point)
+        //UCA0TXBUF=UCA0RXBUF;                        //TXBUF <= RXBUF (echo)
+        user_input_psswd[i]=UCA0RXBUF;              //sets characters from received password to characters received from transmit buffer
+    }
+    UCA0RXBUF = 0;                                  //clears transmit buffer
+}
+
+//function to compare user input at prompt with program defined passwords and usernames
+//checks if password and username is valid and returns status confirmation statements
+void compare_info(void)
+{
+    unsigned int check_user=0;                       //check for valid user name
+    unsigned int check_psswd=0;                      //check for valid password
+    for(i=0; i<strlen(user_input_user_name);i++)                //loops through user name
+    {
+        if(user_name[i]==user_input_user_name[i] || test_username1[i]==user_input_user_name[i] || test_username2[i]==user_input_user_name[i])   //if user name element is equal to the inputed user name element
+        check_user=1;                               //sets check_user to 1
+        else
+        {
+            check_user=0;                           //if not equal, sets check_user to 0
+            break;                                  //break if it is not equal
+        }
+    }
+    for(i=0; i<strlen(user_input_psswd);i++)                   //loops through password
+    {
+        if(psswd[i]==user_input_psswd[i] || test_psswd1[i]==user_input_psswd[i] || test_psswd2[i]==user_input_psswd[i])   //if password element is equal to the inputed password element
+        check_psswd=1;                            //set check_psswd to 1
+        else
+        {
+            check_psswd=0;                          //if not equal sets check_psswd to 0
+            break;                                  //break if it is not equal
+        }
+    }
+    if((check_user && check_psswd) == 1)            //if check_user AND check_psswd == 1 both password and user name are the valid
+    {
+        end_of_line();                              //calls new line and carriage return function
+
+        for(i=0; i<strlen(valid_input);i++)         //loops through message if user name AND password are valid
+        {
+            while(!(UCA0IFG&UCTXIFG));              //waits for character
+            UCA0TXBUF=valid_input[i];               //sets character to each element of output
+        }
+
+        end_of_line();                              //calls newline and carriage return function
+    }
+    else                                            //else, check_user AND check_psswd != 1 both password and user name are the invalid
+    {
+        end_of_line();                              //calls new line and carriage return function
+
+        for(i=0; i<strlen(invalid_input);i++)       //loops through error message if user name and password are invalid
+        {
+            while(!(UCA0IFG&UCTXIFG));              //waits for character
+            UCA0TXBUF=invalid_input[i];             //sets character to each element of output
+        }
+
+        end_of_line();                              //calls newline and carriage return function
+    }
+}
+
+//**************************************BONUS*************************************************
+//this function prompts to create new user. Adds new username and password
+void new_user_info(void)
+{
+    end_of_line();                              //calls end_of_line and carriage return function
+    for(i=0; i<strlen(new_user);i++)            //loops through new user prompt question
+    {
+        while(!(UCA0IFG&UCTXIFG));              //waits for character
+        UCA0TXBUF=new_user[i];                  //sets character to each element of prompt
+    }
+    end_of_line();                              //calls end_of_line and carriage return function
+
+    for(i=0; i<100;i++)                         //loops through received response on hyperterminal
+    {
+        while(!(UCA0IFG&UCRXIFG));              //waits for character
+        if(UCA0RXBUF== 0x0D)                    //if character is the carriage return, will break from receiving characters
+        break;
+        while(!(UCA0IFG&UCTXIFG));              //waits for character
+        UCA0TXBUF=UCA0RXBUF;                    //TXBUF <= RXBUF (echo)
+        yes_no[i]=UCA0RXBUF;                    //sets characters from new user prompt equal to characters received from transmit buffer
+    }
+    UCA0RXBUF = 0;                              //clears transmit buffer
+
+    if(strcmp(yes_no, ans_Y) == 0)              //if user responds yes, change password on test1
+    {
+        end_of_line();                          //calls new line and carriage return function
+
+        for(i=0; i<strlen(new_username);i++)    //loops through new user username prompt
+        {
+            while(!(UCA0IFG&UCTXIFG));          //waits for character
+            UCA0TXBUF=new_username[i];          //sets character to each element of prompt
+        }
+        end_of_line();                          //calls new line and carriage return function
+
+        for(i=0; i<100;i++)                     //loops through received new username from hyperterminal
+        {
+            while(!(UCA0IFG&UCRXIFG));          //waits for character
+            if(UCA0RXBUF== 0x0D)                //if character is the carriage return, will break from receiving characters
+            break;
+            while(!(UCA0IFG&UCTXIFG));          //waits for character
+            UCA0TXBUF=UCA0RXBUF;                //TXBUF <= RXBUF (echo)
+            test_username2[i]=UCA0RXBUF;        //sets characters from new user prompt equal to characters received from transmit buffer
+        }
+        UCA0RXBUF = 0;                          //clears transmit buffer
+        end_of_line();
+
+        for(i=0; i<strlen(new_psswd);i++)       //loops through new user password prompt
+        {
+            while(!(UCA0IFG&UCTXIFG));          //waits for character
+            UCA0TXBUF=new_psswd[i];             //sets character to each element of prompt
+        }
+
+        end_of_line();                          //calls new line and carriage return function
+
+        for(i=0; i<100;i++)                     //loops through received new password from hyperterminal
+        {
+            while(!(UCA0IFG&UCRXIFG));          //waits for character
+            if(UCA0RXBUF== 0x0D)                //if character is the carraige return, will break from receiving characters
+            break;
+            while(!(UCA0IFG&UCTXIFG));          //waits for character
+            UCA0TXBUF=UCA0RXBUF;                //TXBUF <= RXBUF (echo)
+            test_psswd2[i]=UCA0RXBUF;           //sets characters from new user prompt equal to characters received from transmit buffer
+        }
+        UCA0RXBUF = 0;                          //clears transmit buffer
+        end_of_line();                          //calls new line and carriage return function
+     }
+
+}
+
+//***********************BONUS*****************************************
+//this function prompts user to change password of existing profile
+void psswd_change(void)
+{
+    end_of_line();                              //calls new line and carriage return function
+
+    for(i=0; i<strlen(change_psswd);i++)        //loops through password change prompt
+    {
+        while(!(UCA0IFG&UCTXIFG));              //waits for character
+        UCA0TXBUF=change_psswd[i];              //sets character to each element of prompt
+    }
+    end_of_line();                              //calls new line and carriage return function
+
+    for(i=0; i<100;i++)                         //loops through received characters new password from hyperterminal
+    {
+        while(!(UCA0IFG&UCRXIFG));              //waits for character
+        if(UCA0RXBUF== 0x0D)                    //if character is the carriage return, will break from receiving characters
+        break;
+        while(!(UCA0IFG&UCTXIFG));              //waits for character
+        UCA0TXBUF=UCA0RXBUF;                    //TXBUF <= RXBUF (echo)
+        yes_no[i]=UCA0RXBUF;                    //sets characters from prompt equal to first character received from transmit buffer
+    }
+        UCA0RXBUF = 0;                          //clears transmit buffer
+
+
+    if(strcmp(yes_no, ans_Y) == 0)              //if user responds yes, change password
+    {
+        end_of_line();                          //calls new line and carriage return function
+
+        for(i=0; i<strlen(new_psswd);i++)       //loops through password prompt
+        {
+            while(!(UCA0IFG&UCTXIFG));          //waits for character
+            UCA0TXBUF=new_psswd[i];             //sets character to each element of prompt
+        }
+
+        end_of_line();                          //calls new line and carriage return function
+
+        for(i=0; i<100;i++)                     //loops through received characters from prompt
+        {
+            while(!(UCA0IFG&UCRXIFG));          //waits for character
+            if(UCA0RXBUF== 0x0D)                //if character is the carraige return, will break from receiving characters
+            break;
+            while(!(UCA0IFG&UCTXIFG));          //waits for character
+            UCA0TXBUF=UCA0RXBUF;                //TXBUF <= RXBUF (echo)
+            test_psswd1[i]=UCA0RXBUF;           //sets characters from prompt equal to first character received from transmit buffer
+        }
+            UCA0RXBUF = 0;                      //clears transmit buffer
+            end_of_line();                      //calls new line and carriage return function
+    }
+
+    else if(strcmp(yes_no, ans_N) == 0)         //if user responds no, ask to create new profile
+    {
+        new_user_info();
+    }
+
+}
+
+void UART_setup(void)
+{
+    P3SEL |= BIT3 + BIT4;   // Set USCI_A0 RXD/TXD to receive/transmit data
+    UCA0CTL1 |= UCSWRST;    // Set software reset during initialization
+    UCA0CTL0 = 0;           // USCI_A0 control register
+    UCA0CTL1 |= UCSSEL_2;   // Clock source SMCLK
+
+    UCA0BR0 = 0x09;         // 1048576 Hz  / 115200 lower byte
+    UCA0BR1 = 0x00;         // upper byte
+    UCA0MCTL |= UCBRS0;     // Modulation (UCBRS0=0x01, UCOS16=0)
+
+    UCA0CTL1 &= ~UCSWRST;   // Clear software reset to initialize USCI state machine
+}
+
+void main(void)
+{
+    WDTCTL = WDTPW + WDTHOLD;               // Stop WDT
+    UART_setup();                                   // Initialize UART
+
+    while(1)
+    {
+        prompt_user();                             //calls username and password prompt function
+        compare_info();                            //calls compare function
+        psswd_change();                            //calls password change function
+    }
+}
+
